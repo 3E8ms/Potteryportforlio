@@ -1,0 +1,55 @@
+# Runs the whole shop: Postgres database, Python API, and the website.
+# Start:  docker compose up --build        Then open http://localhost:8080
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-xiaoli}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-xiaoli}
+      POSTGRES_DB: ${POSTGRES_DB:-xiaoli}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-xiaoli} -d ${POSTGRES_DB:-xiaoli}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-xiaoli}:${POSTGRES_PASSWORD:-xiaoli}@db:5432/${POSTGRES_DB:-xiaoli}
+      UPLOAD_DIR: /app/uploads
+    volumes:
+      - uploads:/app/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    ports:
+      - "${SITE_PORT:-8080}:80"
+    depends_on:
+      - backend
+
+  # Optional, for testing payments on your computer:
+  #   docker compose --profile stripe up
+  # Forwards Stripe test-mode events to the backend. Copy the whsec_... secret it
+  # prints into STRIPE_WEBHOOK_SECRET in .env, then restart the backend.
+  stripe:
+    image: stripe/stripe-cli:latest
+    profiles: ["stripe"]
+    command: listen --forward-to backend:8000/api/stripe/webhook --events checkout.session.completed,checkout.session.async_payment_succeeded,checkout.session.async_payment_failed,checkout.session.expired
+    environment:
+      STRIPE_API_KEY: ${STRIPE_SECRET_KEY:-}
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:
+  uploads:
