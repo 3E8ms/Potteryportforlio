@@ -1,5 +1,6 @@
 # Little Grain Market
-'''
+
+```
 backend/
   app/
     main.py            Creates the FastAPI app and mounts the routers
@@ -34,5 +35,5 @@ frontend/
   nginx.conf           Production: serves the site and proxies /api and /uploads
 docker-compose.yml
 .env.example
-'''
+```
 <img width="1257" height="875" alt="image" src="https://github.com/user-attachments/assets/76cfeb86-1c9a-4726-9db5-9da406d1331c" />
